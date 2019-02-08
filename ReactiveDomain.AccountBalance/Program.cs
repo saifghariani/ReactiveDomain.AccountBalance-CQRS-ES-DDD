@@ -3,6 +3,7 @@ using ReactiveDomain.EventStore;
 using ReactiveDomain.Foundation;
 using ReactiveDomain.Messaging;
 using ReactiveDomain.Messaging.Bus;
+using ReactiveDomain.Util;
 using System;
 
 namespace ReactiveDomain.AccountBalance
@@ -22,8 +23,8 @@ namespace ReactiveDomain.AccountBalance
     public class Application
     {
         private IStreamStoreConnection conn;
-        private IRepository repo;
-        private Guid _accountId = Guid.Parse("06AC5641-EDE6-466F-9B37-DD8304D05A84");
+        public IRepository repo;
+        public Guid _accountId = Guid.Parse("06AC5641-EDE6-466F-9B37-DD8304D05A84");
         private string _holderName = "Saif";
         private BalanceReadModel _readModel;
         public void Bootstrap()
@@ -76,13 +77,13 @@ namespace ReactiveDomain.AccountBalance
                             Console.WriteLine(e);
                         }
                         break;
-                    case "overdraftlimit":
+                    case "odlimit":
                         acct = repo.GetById<Account>(_accountId);
                         acct.SetOverDraftLimit(uint.Parse(cmd[1]));
                         repo.Save(acct);
                         Console.WriteLine($"setting overdraftLimit to {cmd[1]}");
                         break;
-                    case "dailywiretransferlimit":
+                    case "dwtlimit":
                         acct = repo.GetById<Account>(_accountId);
                         acct.SetDailyWireTransferLimit(uint.Parse(cmd[1]));
                         repo.Save(acct);
@@ -169,6 +170,7 @@ namespace ReactiveDomain.AccountBalance
         private long _balance;
         private long _overDraftLimit;
         private long _dailyWireTransferLimit;
+        private long _withdrawnToday;
         private string _state;
 
         public Account()
@@ -207,6 +209,10 @@ namespace ReactiveDomain.AccountBalance
 
         private void Apply(Debit @event)
         {
+            if (@event.WithdrawDate.Date == DateTime.UtcNow.Date)
+                _withdrawnToday += @event.Amount;
+            else
+                _withdrawnToday = 0;
             _balance -= @event.Amount;
         }
         private void Apply(Credit @event)
@@ -231,26 +237,26 @@ namespace ReactiveDomain.AccountBalance
 
         public void Debit(uint amount)
         {
-            //Ensure.LessThanOrEqualTo(_dailyWireTransferLimit, withdrawntoday, "Balance");
+            Ensure.LessThanOrEqualTo(_dailyWireTransferLimit, _withdrawnToday + amount, "DailyLimit");
             if (_state.ToLower() == "active")
             {
                 if (_balance - amount < 0 && Math.Abs(_balance - amount) > _overDraftLimit)
                     Raise(new BlockAccount());
                 else
+                {
                     Raise(new Debit(amount));
+                }
             }
 
         }
 
         public void SetDailyWireTransferLimit(uint dailyWireTransferLimit)
         {
-            //nothing to check
             Raise(new SetDailyWireTransferLimit(dailyWireTransferLimit));
         }
 
         public void SetOverDraftLimit(uint overDraftLimit)
         {
-            //nothing to check
             Raise(new SetOverDraftLimit(overDraftLimit));
         }
     }
@@ -271,9 +277,11 @@ namespace ReactiveDomain.AccountBalance
     public class Debit : Message
     {
         public uint Amount;
+        public DateTime WithdrawDate;
         public Debit(uint amount)
         {
             Amount = amount;
+            WithdrawDate = DateTime.UtcNow;
         }
     }
 
