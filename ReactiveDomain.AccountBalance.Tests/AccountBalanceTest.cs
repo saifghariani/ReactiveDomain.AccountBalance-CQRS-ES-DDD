@@ -31,6 +31,15 @@ namespace ReactiveDomain.AccountBalance.Tests
         //    Assert.Equal(ExpectedResult._overDraftLimit,acct.OverDraftLimit);
         //    Assert.Equal(ExpectedResult._state,acct.State);
         //}
+        [Fact]
+        public void AccountCreated()
+        {
+            var app = new Application();
+            app.Bootstrap();
+            Account acct;
+            acct = app.repo.GetById<Account>(app._accountId);
+            Assert.NotNull(acct);
+        }
 
         [Fact]
         public void ShouldCredit()
@@ -42,6 +51,22 @@ namespace ReactiveDomain.AccountBalance.Tests
             Account acct;
             acct = app.repo.GetById<Account>(app._accountId);
             acct.Credit(amount);
+            Assert.Equal(ExpectedResult, acct.Balance);
+        }
+
+        [Fact]
+        public void ShouldDebit()
+        {
+            var ExpectedResult = 1000;
+            var amount = (uint)200;
+            var app = new Application();
+            app.Bootstrap();
+            Account acct;
+            acct = app.repo.GetById<Account>(app._accountId);
+            //to avoid daily Limit
+            acct.SetDailyWireTransferLimit(1000);
+            acct.Credit(1200);
+            acct.Debit(amount);
             Assert.Equal(ExpectedResult, acct.Balance);
         }
 
@@ -75,6 +100,7 @@ namespace ReactiveDomain.AccountBalance.Tests
         public void TestingDailyLimitReached()
         {
             var limit = (uint)500;
+            var ExpectedResult = "Blocked";
             var app = new Application();
             app.Bootstrap();
             Account acct;
@@ -82,12 +108,9 @@ namespace ReactiveDomain.AccountBalance.Tests
             acct.SetDailyWireTransferLimit(limit);
             acct.Credit(501);
             acct.Debit(250);
-
-            var ex = Assert.Throws<ArgumentException>(() =>
-             {
-                 acct.Debit(251);
-             });
-            Assert.Null(ex.InnerException);
+            acct.Debit(251);
+            Assert.Equal(ExpectedResult, acct.State);
+            
         }
 
         [Theory]
@@ -105,6 +128,27 @@ namespace ReactiveDomain.AccountBalance.Tests
             acct.SetDailyWireTransferLimit(1000); 
             acct.Debit(amount);
             Assert.Equal(state, acct.State);
+        }
+
+        [Fact]
+        public void ShouldUnblockAccount()
+        {
+            var limit = (uint)500;
+            var ExpectedResult = "Active";
+            var app = new Application();
+            app.Bootstrap();
+            Account acct;
+            acct = app.repo.GetById<Account>(app._accountId);
+            acct.SetOverDraftLimit(limit);
+            //to avoid daily limit exception
+            acct.SetDailyWireTransferLimit(1000);
+            //to block account
+            acct.Debit(501);
+            Assert.Equal("Blocked", acct.State);
+
+            acct.Credit(501);
+            Assert.Equal("Active", acct.State);
+
         }
     }
 }

@@ -3,7 +3,6 @@ using ReactiveDomain.EventStore;
 using ReactiveDomain.Foundation;
 using ReactiveDomain.Messaging;
 using ReactiveDomain.Messaging.Bus;
-using ReactiveDomain.Util;
 using System;
 
 namespace ReactiveDomain.AccountBalance
@@ -238,7 +237,9 @@ namespace ReactiveDomain.AccountBalance
 
         public void Debit(uint amount)
         {
-            Ensure.LessThanOrEqualTo(DailyWireTransferLimit, _withdrawnToday + amount, "DailyLimit");
+            if (DailyWireTransferLimit <= _withdrawnToday + amount)
+                Raise(new BlockAccount());
+
             if (State.ToLower() == "active")
             {
                 if (Balance - amount < 0 && Math.Abs(Balance - amount) > OverDraftLimit)
