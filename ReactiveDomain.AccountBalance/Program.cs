@@ -167,11 +167,12 @@ namespace ReactiveDomain.AccountBalance
     }
     public class Account : EventDrivenStateMachine
     {
-        private long _balance;
-        private long _overDraftLimit;
-        private long _dailyWireTransferLimit;
+        public long Balance;
+        public long OverDraftLimit;
+        public long DailyWireTransferLimit;
+        public string State;
+
         private long _withdrawnToday;
-        private string _state;
 
         public Account()
         {
@@ -187,7 +188,7 @@ namespace ReactiveDomain.AccountBalance
             Register<AccountCreated>(evt =>
             {
                 Id = evt.Id;
-                _state = evt.State;
+                State = evt.State;
             });
             Register<Debit>(Apply);
             Register<Credit>(Apply);
@@ -199,12 +200,12 @@ namespace ReactiveDomain.AccountBalance
 
         private void Apply(UnblockAccount @event)
         {
-            _state = @event.AccountState;
+            State = @event.AccountState;
         }
 
         private void Apply(BlockAccount @event)
         {
-            _state = @event.AccountState;
+            State = @event.AccountState;
         }
 
         private void Apply(Debit @event)
@@ -213,23 +214,23 @@ namespace ReactiveDomain.AccountBalance
                 _withdrawnToday += @event.Amount;
             else
                 _withdrawnToday = 0;
-            _balance -= @event.Amount;
+            Balance -= @event.Amount;
         }
         private void Apply(Credit @event)
         {
-            _balance += @event.Amount;
+            Balance += @event.Amount;
         }
         private void Apply(SetDailyWireTransferLimit @event)
         {
-            _dailyWireTransferLimit = @event.DailyWireTransferLimit;
+            DailyWireTransferLimit = @event.DailyWireTransferLimit;
         }
         private void Apply(SetOverDraftLimit @event)
         {
-            _overDraftLimit = @event.OverDraftLimit;
+            OverDraftLimit = @event.OverDraftLimit;
         }
         public void Credit(uint amount)
         {
-            if (_state.ToLower() == "blocked" && _balance + amount >= 0)
+            if (State.ToLower() == "blocked" && Balance + amount >= 0)
                 Raise(new UnblockAccount());
 
             Raise(new Credit(amount));
@@ -237,10 +238,10 @@ namespace ReactiveDomain.AccountBalance
 
         public void Debit(uint amount)
         {
-            Ensure.LessThanOrEqualTo(_dailyWireTransferLimit, _withdrawnToday + amount, "DailyLimit");
-            if (_state.ToLower() == "active")
+            Ensure.LessThanOrEqualTo(DailyWireTransferLimit, _withdrawnToday + amount, "DailyLimit");
+            if (State.ToLower() == "active")
             {
-                if (_balance - amount < 0 && Math.Abs(_balance - amount) > _overDraftLimit)
+                if (Balance - amount < 0 && Math.Abs(Balance - amount) > OverDraftLimit)
                     Raise(new BlockAccount());
                 else
                 {
