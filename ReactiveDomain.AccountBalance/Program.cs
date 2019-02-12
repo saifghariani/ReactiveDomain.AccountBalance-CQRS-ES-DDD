@@ -58,9 +58,16 @@ namespace ReactiveDomain.AccountBalance
                 {
                     case "credit":
                         acct = repo.GetById<Account>(_accountId);
-                        acct.Credit(uint.Parse(cmd[1]));
-                        repo.Save(acct);
-                        Console.WriteLine($"got credit {cmd[1]}");
+                        try
+                        {
+                            acct.Credit(uint.Parse(cmd[2]), cmd[1]);
+                            repo.Save(acct);
+                            Console.WriteLine($"got credit {cmd[2]}");
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Command should be:\n\tcredit {type} {amount}\n\ttype : 'cash' or 'check'\n\tamount : number");
+                        }
                         break;
                     case "debit":
                         try
@@ -97,6 +104,7 @@ namespace ReactiveDomain.AccountBalance
     public class BalanceReadModel :
         ReadModelBase,
         IHandle<Credit>,
+        IHandle<CreditCheck>,
         IHandle<Debit>,
         IHandle<BlockAccount>,
         IHandle<UnblockAccount>,
@@ -106,6 +114,7 @@ namespace ReactiveDomain.AccountBalance
         public BalanceReadModel(Func<IListener> listener, Guid accountId) : base(listener)
         {
             EventStream.Subscribe<Credit>(this);
+            EventStream.Subscribe<CreditCheck>(this);
             EventStream.Subscribe<Debit>(this);
             EventStream.Subscribe<BlockAccount>(this);
             EventStream.Subscribe<UnblockAccount>(this);
@@ -137,6 +146,18 @@ namespace ReactiveDomain.AccountBalance
             redraw();
 
         }
+        public void Handle(CreditCheck message)
+        {
+            var depositDate = message.CreditDate.AddDays(1);
+            while (!(depositDate.DayOfWeek >= DayOfWeek.Monday && depositDate.DayOfWeek <= DayOfWeek.Friday))
+            {
+                depositDate = depositDate.AddDays(1);
+            }
+            if (DateTime.UtcNow.Date >= depositDate.Date)
+                balance += (int)message.Amount;
+
+            redraw();
+        }
         public void Handle(Debit message)
         {
             balance -= (int)message.Amount;
@@ -163,6 +184,8 @@ namespace ReactiveDomain.AccountBalance
             Console.WriteLine($"Balance = { balance }");
             Console.WriteLine($"State = { state }");
         }
+
+
     }
     public class Account : EventDrivenStateMachine
     {
@@ -191,10 +214,22 @@ namespace ReactiveDomain.AccountBalance
             });
             Register<Debit>(Apply);
             Register<Credit>(Apply);
+            Register<CreditCheck>(Apply);
             Register<SetDailyWireTransferLimit>(Apply);
             Register<SetOverDraftLimit>(Apply);
             Register<BlockAccount>(Apply);
             Register<UnblockAccount>(Apply);
+        }
+
+        private void Apply(CreditCheck @event)
+        {
+            var depositDate = @event.CreditDate.AddDays(1);
+            while (!(depositDate.DayOfWeek >= DayOfWeek.Monday && depositDate.DayOfWeek <= DayOfWeek.Friday))
+            {
+                depositDate = depositDate.AddDays(1);
+            }
+            if (DateTime.UtcNow.Date >= depositDate.Date)
+                Balance += @event.Amount;
         }
 
         private void Apply(UnblockAccount @event)
@@ -227,12 +262,20 @@ namespace ReactiveDomain.AccountBalance
         {
             OverDraftLimit = @event.OverDraftLimit;
         }
-        public void Credit(uint amount)
+        public void Credit(uint amount, string type)
         {
-            if (State.ToLower() == "blocked" && Balance + amount >= 0)
-                Raise(new UnblockAccount());
-
-            Raise(new Credit(amount));
+            if (type.ToLower().Contains("cash"))
+            {
+                Raise(new Credit(amount));
+                if (State.ToLower() == "blocked" && Balance >= 0)
+                    Raise(new UnblockAccount());
+            }
+            else if (type.ToLower().Contains("check"))
+            {
+                Raise(new CreditCheck(amount));
+                if (State.ToLower() == "blocked" && Balance >= 0)
+                    Raise(new UnblockAccount());
+            }
         }
 
         public void Debit(uint amount)
@@ -290,10 +333,20 @@ namespace ReactiveDomain.AccountBalance
     public class Credit : Message
     {
         public uint Amount;
-
         public Credit(uint amount)
         {
             Amount = amount;
+        }
+    }
+
+    public class CreditCheck : Message
+    {
+        public uint Amount;
+        public DateTime CreditDate;
+        public CreditCheck(uint amount)
+        {
+            Amount = amount;
+            CreditDate = DateTime.UtcNow;
         }
     }
 
