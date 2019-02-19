@@ -1,8 +1,6 @@
 ﻿using EventStore.ClientAPI;
 using ReactiveDomain.EventStore;
 using ReactiveDomain.Foundation;
-using ReactiveDomain.Messaging;
-using ReactiveDomain.Messaging.Bus;
 using System;
 
 namespace ReactiveDomain.AccountBalance
@@ -35,352 +33,88 @@ namespace ReactiveDomain.AccountBalance
             IStreamNameBuilder namer = new PrefixedCamelCaseStreamNameBuilder();
             IEventSerializer ser = new JsonMessageSerializer();
             repo = new StreamStoreRepository(namer, conn, ser);
-            Account acct = null;
+            AccountAggregate acct = null;
             try
             {
-                repo.Save(new Account(_accountId, _holderName));
+                repo.Save(new AccountAggregate(_accountId, _holderName));
             }
             catch (Exception e)
             {
             }
-            IListener listener = new StreamListener("Account", conn, namer, ser);
+            IListener listener = new StreamListener("AccountAggregate", conn, namer, ser);
             _readModel = new BalanceReadModel(() => listener, _accountId);
         }
         public void Run()
         {
             var cmd = new[] { "" };
-            Account acct;
+            AccountAggregate acct;
             do
             {
 
                 cmd = Console.ReadLine().Split(' ');
                 switch (cmd[0].ToLower())
                 {
-                    case "credit":
-                        acct = repo.GetById<Account>(_accountId);
+                    case "new":
+
+                        repo.Save(new AccountAggregate(_accountId, _holderName));
+
+                        break;
+                    case "deposit":
+                        acct = repo.GetById<AccountAggregate>(_accountId);
                         try
                         {
-                            acct.Credit(uint.Parse(cmd[2]), cmd[1]);
+                            acct.Credit(decimal.Parse(cmd[2]), cmd[1]);
                             repo.Save(acct);
-                            Console.WriteLine($"got credit {cmd[2]}");
+                            Console.WriteLine($"Deposit {cmd[2]}");
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine("Command should be:\n\tcredit {type} {amount}\n\ttype : 'cash' or 'check'\n\tamount : number");
+                            Console.WriteLine("Command should be:\n\tdeposit {type} {amount}\n\ttype : 'cash' or 'check'\n\tamount : number");
                         }
                         break;
-                    case "debit":
+                    case "withdraw":
                         try
                         {
 
-                            acct = repo.GetById<Account>(_accountId);
-                            acct.Debit(uint.Parse(cmd[1]));
+                            acct = repo.GetById<AccountAggregate>(_accountId);
+                            acct.Debit(decimal.Parse(cmd[1]));
                             repo.Save(acct);
-                            Console.WriteLine($"got debit {cmd[1]}");
+                            Console.WriteLine($"Withdraw {cmd[1]}");
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine(e);
                         }
                         break;
-                    case "odlimit":
-                        acct = repo.GetById<Account>(_accountId);
-                        acct.SetOverDraftLimit(uint.Parse(cmd[1]));
-                        repo.Save(acct);
-                        Console.WriteLine($"setting overdraftLimit to {cmd[1]}");
+                    case "overdraft":
+                        acct = repo.GetById<AccountAggregate>(_accountId);
+                        try
+                        {
+                            acct.SetOverDraftLimit(decimal.Parse(cmd[1]));
+                            Console.WriteLine($"setting overdraftLimit to {cmd[1]}");
+                            repo.Save(acct);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e.Message);
+                        }
                         break;
-                    case "dwtlimit":
-                        acct = repo.GetById<Account>(_accountId);
-                        acct.SetDailyWireTransferLimit(uint.Parse(cmd[1]));
-                        repo.Save(acct);
-                        Console.WriteLine($"setting dailyWireTransferLimit to {cmd[1]}");
+                    case "daily":
+                        acct = repo.GetById<AccountAggregate>(_accountId);
+                        try
+                        {
+                            acct.SetDailyWireTransferLimit(decimal.Parse(cmd[1]));
+                            Console.WriteLine($"setting dailyWireTransferLimit to {cmd[1]}");
+                            repo.Save(acct);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e.Message);
+                        }
                         break;
                 }
-
             } while (cmd[0].ToLower() != "exit");
         }
     }
 
-    public class BalanceReadModel :
-        ReadModelBase,
-        IHandle<Credit>,
-        IHandle<CreditCheck>,
-        IHandle<Debit>,
-        IHandle<BlockAccount>,
-        IHandle<UnblockAccount>,
-        IHandle<SetOverDraftLimit>,
-        IHandle<SetDailyWireTransferLimit>
-    {
-        public BalanceReadModel(Func<IListener> listener, Guid accountId) : base(listener)
-        {
-            EventStream.Subscribe<Credit>(this);
-            EventStream.Subscribe<CreditCheck>(this);
-            EventStream.Subscribe<Debit>(this);
-            EventStream.Subscribe<BlockAccount>(this);
-            EventStream.Subscribe<UnblockAccount>(this);
-            EventStream.Subscribe<SetOverDraftLimit>(this);
-            EventStream.Subscribe<SetDailyWireTransferLimit>(this);
-            Start<Account>(accountId);
-        }
-
-        private int balance;
-        private string state;
-        private int overDraftLimit;
-        private int dailyWireTransferLimit;
-
-        public void Handle(BlockAccount message)
-        {
-            state = message.AccountState;
-            redraw();
-
-        }
-        public void Handle(UnblockAccount message)
-        {
-            state = message.AccountState;
-            redraw();
-
-        }
-        public void Handle(Credit message)
-        {
-            balance += (int)message.Amount;
-            redraw();
-
-        }
-        public void Handle(CreditCheck message)
-        {
-            var depositDate = message.CreditDate.AddDays(1);
-            while (!(depositDate.DayOfWeek >= DayOfWeek.Monday && depositDate.DayOfWeek <= DayOfWeek.Friday))
-            {
-                depositDate = depositDate.AddDays(1);
-            }
-            if (DateTime.UtcNow.Date >= depositDate.Date)
-                balance += (int)message.Amount;
-
-            redraw();
-        }
-        public void Handle(Debit message)
-        {
-            balance -= (int)message.Amount;
-            redraw();
-        }
-        public void Handle(SetOverDraftLimit message)
-        {
-            overDraftLimit = (int)message.OverDraftLimit;
-            redraw();
-
-        }
-        public void Handle(SetDailyWireTransferLimit message)
-        {
-            dailyWireTransferLimit = (int)message.DailyWireTransferLimit;
-            redraw();
-
-        }
-
-        private void redraw()
-        {
-            Console.Clear();
-            Console.WriteLine($"OverDraftLimit = { overDraftLimit }");
-            Console.WriteLine($"DailyWireTransferLimit = { dailyWireTransferLimit }");
-            Console.WriteLine($"Balance = { balance }");
-            Console.WriteLine($"State = { state }");
-        }
-
-
-    }
-    public class Account : EventDrivenStateMachine
-    {
-        public long Balance;
-        public long OverDraftLimit;
-        public long DailyWireTransferLimit;
-        public string State;
-
-        private long _withdrawnToday;
-
-        public Account()
-        {
-            setup();
-        }
-        public Account(Guid id, string holderName) : this()
-        {
-            Raise(new AccountCreated(id, holderName));
-        }
-        class MySecretEvent : Message { }
-        public void setup()
-        {
-            Register<AccountCreated>(evt =>
-            {
-                Id = evt.Id;
-                State = evt.State;
-            });
-            Register<Debit>(Apply);
-            Register<Credit>(Apply);
-            Register<CreditCheck>(Apply);
-            Register<SetDailyWireTransferLimit>(Apply);
-            Register<SetOverDraftLimit>(Apply);
-            Register<BlockAccount>(Apply);
-            Register<UnblockAccount>(Apply);
-        }
-
-        private void Apply(CreditCheck @event)
-        {
-            var depositDate = @event.CreditDate.AddDays(1);
-            while (!(depositDate.DayOfWeek >= DayOfWeek.Monday && depositDate.DayOfWeek <= DayOfWeek.Friday))
-            {
-                depositDate = depositDate.AddDays(1);
-            }
-            if (DateTime.UtcNow.Date >= depositDate.Date)
-                Balance += @event.Amount;
-        }
-
-        private void Apply(UnblockAccount @event)
-        {
-            State = @event.AccountState;
-        }
-
-        private void Apply(BlockAccount @event)
-        {
-            State = @event.AccountState;
-        }
-
-        private void Apply(Debit @event)
-        {
-            if (@event.WithdrawDate.Date == DateTime.UtcNow.Date)
-                _withdrawnToday += @event.Amount;
-            else
-                _withdrawnToday = 0;
-            Balance -= @event.Amount;
-        }
-        private void Apply(Credit @event)
-        {
-            Balance += @event.Amount;
-        }
-        private void Apply(SetDailyWireTransferLimit @event)
-        {
-            DailyWireTransferLimit = @event.DailyWireTransferLimit;
-        }
-        private void Apply(SetOverDraftLimit @event)
-        {
-            OverDraftLimit = @event.OverDraftLimit;
-        }
-        public void Credit(uint amount, string type)
-        {
-            if (type.ToLower().Contains("cash"))
-            {
-                Raise(new Credit(amount));
-                if (State.ToLower() == "blocked" && Balance >= 0)
-                    Raise(new UnblockAccount());
-            }
-            else if (type.ToLower().Contains("check"))
-            {
-                Raise(new CreditCheck(amount));
-                if (State.ToLower() == "blocked" && Balance >= 0)
-                    Raise(new UnblockAccount());
-            }
-        }
-
-        public void Debit(uint amount)
-        {
-            if (DailyWireTransferLimit <= _withdrawnToday + amount)
-                Raise(new BlockAccount());
-
-            if (State.ToLower() == "active")
-            {
-                if (Balance - amount < 0 && Math.Abs(Balance - amount) > OverDraftLimit)
-                    Raise(new BlockAccount());
-                else
-                {
-                    Raise(new Debit(amount));
-                }
-            }
-
-        }
-
-        public void SetDailyWireTransferLimit(uint dailyWireTransferLimit)
-        {
-            Raise(new SetDailyWireTransferLimit(dailyWireTransferLimit));
-        }
-
-        public void SetOverDraftLimit(uint overDraftLimit)
-        {
-            Raise(new SetOverDraftLimit(overDraftLimit));
-        }
-    }
-    public class AccountCreated : Message
-    {
-        public readonly Guid Id;
-        public readonly string HolderName;
-        public readonly string State;
-
-        public AccountCreated(Guid id, string holderName)
-        {
-            Id = id;
-            HolderName = holderName;
-            State = "Active";
-        }
-    }
-
-    public class Debit : Message
-    {
-        public uint Amount;
-        public DateTime WithdrawDate;
-        public Debit(uint amount)
-        {
-            Amount = amount;
-            WithdrawDate = DateTime.UtcNow;
-        }
-    }
-
-    public class Credit : Message
-    {
-        public uint Amount;
-        public Credit(uint amount)
-        {
-            Amount = amount;
-        }
-    }
-
-    public class CreditCheck : Message
-    {
-        public uint Amount;
-        public DateTime CreditDate;
-        public CreditCheck(uint amount)
-        {
-            Amount = amount;
-            CreditDate = DateTime.UtcNow;
-        }
-    }
-
-    public class SetOverDraftLimit : Message
-    {
-        public uint OverDraftLimit;
-        public SetOverDraftLimit(uint overDraftLimit)
-        {
-            OverDraftLimit = overDraftLimit;
-        }
-    }
-
-    public class SetDailyWireTransferLimit : Message
-    {
-        public uint DailyWireTransferLimit;
-        public SetDailyWireTransferLimit(uint dailyWireTransferLimit)
-        {
-            DailyWireTransferLimit = dailyWireTransferLimit;
-        }
-    }
-    public class BlockAccount : Message
-    {
-        public string AccountState;
-        public BlockAccount()
-        {
-            AccountState = "Blocked";
-        }
-    }
-    public class UnblockAccount : Message
-    {
-        public string AccountState;
-        public UnblockAccount()
-        {
-            AccountState = "Active";
-        }
-    }
 }

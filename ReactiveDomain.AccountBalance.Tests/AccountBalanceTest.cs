@@ -11,8 +11,8 @@ namespace ReactiveDomain.AccountBalance.Tests
         {
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             Assert.NotNull(acct);
         }
 
@@ -23,8 +23,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var amount = (uint)1200;
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.Credit(amount, "cash");
             Assert.Equal(ExpectedResult, acct.Balance);
         }
@@ -36,8 +36,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var amount = (uint)1200;
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.Credit(amount, "check");
             Assert.Equal(ExpectedResult, acct.Balance);
         }
@@ -49,8 +49,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var amount = (uint)200;
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             //to avoid daily Limit
             acct.SetDailyWireTransferLimit(1000);
             acct.Credit(1200, "cash");
@@ -65,8 +65,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var limit = (uint)300;
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.SetOverDraftLimit(limit);
             Assert.Equal(ExpectedResult, acct.OverDraftLimit);
         }
@@ -78,8 +78,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var limit = (uint)500;
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.SetDailyWireTransferLimit(limit);
             Assert.Equal(ExpectedResult, acct.DailyWireTransferLimit);
         }
@@ -91,8 +91,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var ExpectedResult = "Blocked";
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.SetDailyWireTransferLimit(limit);
             acct.Credit(501, "cash");
             acct.Debit(250);
@@ -109,8 +109,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var limit = (uint)500;
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.SetOverDraftLimit(limit);
             //to avoid daily limit exception
             acct.SetDailyWireTransferLimit(1000); 
@@ -125,8 +125,8 @@ namespace ReactiveDomain.AccountBalance.Tests
             var ExpectedResult = "Active";
             var app = new Application();
             app.Bootstrap();
-            Account acct;
-            acct = app.repo.GetById<Account>(app._accountId);
+            AccountAggregate acct;
+            acct = app.repo.GetById<AccountAggregate>(app._accountId);
             acct.SetOverDraftLimit(limit);
             //to avoid daily limit exception
             acct.SetDailyWireTransferLimit(1000);
