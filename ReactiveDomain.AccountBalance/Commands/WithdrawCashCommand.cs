@@ -5,7 +5,7 @@ using ReactiveDomain.Messaging;
 
 namespace ReactiveDomain.AccountBalance.Commands
 {
-    class WithdrawCashCommand : Command
+    public class WithdrawCashCommand : Command
     {
         public WithdrawCashCommand():base(NewRoot())
         {

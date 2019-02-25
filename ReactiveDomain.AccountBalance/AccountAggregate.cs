@@ -1,7 +1,7 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
-using ReactiveDomain.AccountBalance.Events;
+﻿using ReactiveDomain.AccountBalance.Events;
 using ReactiveDomain.Messaging;
+using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace ReactiveDomain.AccountBalance
 {
@@ -11,6 +11,7 @@ namespace ReactiveDomain.AccountBalance
         public decimal OverDraftLimit;
         public decimal DailyWireTransferLimit;
         public string State;
+        public string HolderName;
 
         private decimal _withdrawnToday;
 
@@ -18,9 +19,15 @@ namespace ReactiveDomain.AccountBalance
         {
             setup();
         }
-        public AccountAggregate(Guid id, string holderName) : this()
+        public AccountAggregate(Guid id, string holderName, CorrelatedMessage source) : this()
         {
-            Raise(new AccountCreatedEvent(id, holderName));
+            var accountCreated = new AccountCreatedEvent(source)
+            {
+                HolderName = holderName,
+                Id = id,
+                State = "Active"
+            };
+            Raise(accountCreated);
         }
         class MySecretEvent : Message { }
         public void setup()
@@ -28,6 +35,8 @@ namespace ReactiveDomain.AccountBalance
             Register<AccountCreatedEvent>(evt =>
             {
                 Id = evt.Id;
+                HolderName = evt.HolderName;
+                State = evt.State;
             });
             Register<AccountCashWithdrawnEvent>(Apply);
             Register<AccountCashDepositedEvent>(Apply);
@@ -79,23 +88,48 @@ namespace ReactiveDomain.AccountBalance
         {
             OverDraftLimit = @event.OverDraftLimit;
         }
-        public void Credit(decimal amount, string type)
+        public void Credit(decimal amount, string type, CorrelatedMessage source)
         {
             if (type.ToLower().Contains("cash"))
             {
-                Raise(new AccountCashDepositedEvent(Id,amount));
+                var cashDeposited = new AccountCashDepositedEvent(source)
+                {
+                    AccountId = Id,
+                    Amount = amount
+                };
+                Raise(cashDeposited);
                 if (State.ToLower() == "blocked" && Balance >= 0)
-                    Raise(new AccountUnblockedEvent(Id));
+                {
+                    var unblocked = new AccountUnblockedEvent(source)
+                    {
+                        AccountId = Id,
+                        AccountState = "Active"
+                    };
+                    Raise(unblocked);
+                }
             }
             else if (type.ToLower().Contains("check"))
             {
-                Raise(new AccountCheckDepositedEvent(Id, amount));
+                var checkDeposited = new AccountCheckDepositedEvent(source)
+                {
+                    AccountId = Id,
+                    Amount = amount,
+                    CreditDate = DateTime.UtcNow
+                };
+                Raise(checkDeposited);
                 if (State.ToLower() == "blocked" && Balance >= 0)
-                    Raise(new AccountUnblockedEvent(Id));
+                {
+                    var unblocked = new AccountUnblockedEvent(source)
+                    {
+                        AccountId = Id,
+                        AccountState = "Active"
+                    };
+                    Raise(unblocked);
+                }
             }
         }
 
-        public void Debit(decimal amount)
+        public void Debit(decimal amount, CorrelatedMessage source)
         {
             if (amount < 0)
                 throw new ValidationException("Cash Withdrawal cannot be a negative amount");
@@ -104,34 +138,63 @@ namespace ReactiveDomain.AccountBalance
                 throw new ValidationException("Account is blocked");
 
             if (DailyWireTransferLimit <= _withdrawnToday + amount)
-                Raise(new AccountBlockedEvent(Id));
+            {
+                var blocked = new AccountBlockedEvent(source)
+                {
+                    AccountId = Id,
+                    AccountState = "Blocked"
+                };
+                Raise(blocked);
+            }
 
             if (State.ToLower() == "active")
             {
                 if (Balance - amount < 0 && Math.Abs(Balance - amount) > OverDraftLimit)
-                    Raise(new AccountBlockedEvent(Id));
+                {
+                    var blocked = new AccountBlockedEvent(source)
+                    {
+                        AccountId = Id,
+                        AccountState = "Blocked"
+                    };
+                    Raise(blocked);
+                }
                 else
                 {
-                    Raise(new AccountCashWithdrawnEvent(Id, amount));
+                    var withdrawn = new AccountCashWithdrawnEvent(source)
+                    {
+                        AccountId = Id,
+                        Amount = amount,
+                        WithdrawDate = DateTime.UtcNow
+                    };
+                    Raise(withdrawn);
                 }
             }
 
         }
 
-        public void SetDailyWireTransferLimit(decimal dailyWireTransferLimit)
+        public void SetDailyWireTransferLimit(decimal dailyWireTransferLimit, CorrelatedMessage source)
         {
             if (dailyWireTransferLimit < 0)
                 throw new ValidationException("dailyWireTransfer limit cannot be negative");
-
-            Raise(new DailyWireTransferLimitSetEvent(Id, dailyWireTransferLimit));
+            var dailyWireTransferLimitSet = new DailyWireTransferLimitSetEvent(source)
+            {
+                AccountId = Id,
+                DailyWireTransferLimit = dailyWireTransferLimit
+            };
+            Raise(dailyWireTransferLimitSet);
         }
 
-        public void SetOverDraftLimit(decimal overDraftLimit)
+        public void SetOverDraftLimit(decimal overDraftLimit, CorrelatedMessage source)
         {
             if (overDraftLimit < 0)
                 throw new ValidationException("Overdraft limit cannot be negative");
 
-            Raise(new OverDraftLimitSetEvent(Id, overDraftLimit));
+            var overDraftLimitSetEvent = new OverDraftLimitSetEvent(source)
+            {
+                AccountId = Id,
+                OverDraftLimit = overDraftLimit
+            };
+            Raise(overDraftLimitSetEvent);
         }
     }
 }

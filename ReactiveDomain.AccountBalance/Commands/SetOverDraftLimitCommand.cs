@@ -1,10 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using ReactiveDomain.Messaging;
 
 namespace ReactiveDomain.AccountBalance.Commands
 {
-    class SetOverDraftLimitCommand
+    public class SetOverDraftLimitCommand : Command
     {
+        public SetOverDraftLimitCommand() : base(NewRoot())
+        {
+
+        }
+        public Guid AccountId { get; set; }
+        public  decimal OverDraftLimit { get; set; }
     }
 }

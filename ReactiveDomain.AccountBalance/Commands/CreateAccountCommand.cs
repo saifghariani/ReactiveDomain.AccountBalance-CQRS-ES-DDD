@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using ReactiveDomain.Messaging;
+using System;
 
 namespace ReactiveDomain.AccountBalance.Commands
 {
-    class CreateAccountCommand
+    public class CreateAccountCommand : Command
     {
+        public CreateAccountCommand() : base(NewRoot())
+        { }
+
+        public Guid AccountId { get; set; }
+        public string HolderName { get; set; }
     }
 }

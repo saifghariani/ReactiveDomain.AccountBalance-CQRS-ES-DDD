@@ -1,7 +1,8 @@
-﻿using System;
-using ReactiveDomain.AccountBalance.Events;
+﻿using ReactiveDomain.AccountBalance.Events;
 using ReactiveDomain.Foundation;
 using ReactiveDomain.Messaging.Bus;
+using System;
+using System.Collections.Generic;
 
 namespace ReactiveDomain.AccountBalance
 {
@@ -16,7 +17,9 @@ namespace ReactiveDomain.AccountBalance
         IHandle<OverDraftLimitSetEvent>,
         IHandle<DailyWireTransferLimitSetEvent>
     {
-        public BalanceReadModel(Func<IListener> listener, Guid accountId) : base(listener)
+        public List<AccountAggregate> Accounts = new List<AccountAggregate>();
+
+        public BalanceReadModel(Func<IListener> listener) : base(listener)
         {
             EventStream.Subscribe<AccountCashDepositedEvent>(this);
             EventStream.Subscribe<AccountCheckDepositedEvent>(this);
@@ -26,19 +29,20 @@ namespace ReactiveDomain.AccountBalance
             EventStream.Subscribe<OverDraftLimitSetEvent>(this);
             EventStream.Subscribe<DailyWireTransferLimitSetEvent>(this);
             EventStream.Subscribe<AccountCreatedEvent>(this);
-            Start<AccountAggregate>(accountId);
+            Start<AccountAggregate>(null, true);
         }
 
-        private int balance;
+        private decimal balance;
         private string state;
         private string holderName;
-        private int overDraftLimit;
-        private int dailyWireTransferLimit;
+        private decimal overDraftLimit;
+        private decimal dailyWireTransferLimit;
         public void Handle(AccountCreatedEvent message)
         {
             state = message.State;
             holderName = message.HolderName;
-            redraw();
+            Accounts.Add(new AccountAggregate(message.Id, holderName, message));
+            //redraw();
         }
         public void Handle(AccountBlockedEvent message)
         {
@@ -54,7 +58,7 @@ namespace ReactiveDomain.AccountBalance
         }
         public void Handle(AccountCashDepositedEvent message)
         {
-            balance += (int)message.Amount;
+            balance += (decimal)message.Amount;
             redraw();
 
         }
@@ -66,37 +70,52 @@ namespace ReactiveDomain.AccountBalance
                 depositDate = depositDate.AddDays(1);
             }
             if (DateTime.UtcNow.Date >= depositDate.Date)
-                balance += (int)message.Amount;
+                balance += (decimal)message.Amount;
 
             redraw();
         }
         public void Handle(AccountCashWithdrawnEvent message)
         {
-            balance -= (int)message.Amount;
+            balance -= (decimal)message.Amount;
             redraw();
         }
         public void Handle(OverDraftLimitSetEvent message)
         {
-            overDraftLimit = (int)message.OverDraftLimit;
+            overDraftLimit = (decimal)message.OverDraftLimit;
             redraw();
 
         }
         public void Handle(DailyWireTransferLimitSetEvent message)
         {
-            dailyWireTransferLimit = (int)message.DailyWireTransferLimit;
+            dailyWireTransferLimit = (decimal)message.DailyWireTransferLimit;
             redraw();
 
         }
 
-        private void redraw()
+        public void GetAccount(AccountAggregate account)
+        {
+
+            holderName = account.HolderName;
+            overDraftLimit = account.OverDraftLimit;
+            dailyWireTransferLimit = account.DailyWireTransferLimit;
+            balance = account.Balance;
+            state = account.State;
+
+        }
+        public void redraw(AccountAggregate account = null)
         {
             Console.Clear();
+
+            if (account != null)
+                GetAccount(account);
+
+            Console.WriteLine($"Holder's name = { holderName }");
             Console.WriteLine($"OverDraftLimit = { overDraftLimit }");
             Console.WriteLine($"DailyWireTransferLimit = { dailyWireTransferLimit }");
             Console.WriteLine($"Balance = { balance }");
             Console.WriteLine($"State = { state }");
         }
 
-        
+
     }
 }

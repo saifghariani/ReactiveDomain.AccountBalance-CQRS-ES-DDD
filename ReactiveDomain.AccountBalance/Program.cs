@@ -1,4 +1,5 @@
 ﻿using EventStore.ClientAPI;
+using ReactiveDomain.AccountBalance.Commands;
 using ReactiveDomain.EventStore;
 using ReactiveDomain.Foundation;
 using System;
@@ -24,6 +25,8 @@ namespace ReactiveDomain.AccountBalance
         public Guid _accountId = Guid.Parse("06AC5641-EDE6-466F-9B37-DD8304D05A84");
         private string _holderName = "Saif";
         private BalanceReadModel _readModel;
+        private IListener listener;
+        private AccountCommandHandler cmdHandler;
         public void Bootstrap()
         {
             IEventStoreConnection esConnection = EventStoreConnection.Create("ConnectTo=tcp://admin:changeit@localhost:1113");
@@ -33,16 +36,23 @@ namespace ReactiveDomain.AccountBalance
             IStreamNameBuilder namer = new PrefixedCamelCaseStreamNameBuilder();
             IEventSerializer ser = new JsonMessageSerializer();
             repo = new StreamStoreRepository(namer, conn, ser);
+            cmdHandler = new AccountCommandHandler(repo);
             AccountAggregate acct = null;
             try
             {
-                repo.Save(new AccountAggregate(_accountId, _holderName));
+                var command = new CreateAccountCommand()
+                {
+                    AccountId = _accountId,
+                    HolderName = _holderName
+                };
+                cmdHandler.Handle(command);
+
             }
             catch (Exception e)
             {
             }
-            IListener listener = new StreamListener("AccountAggregate", conn, namer, ser);
-            _readModel = new BalanceReadModel(() => listener, _accountId);
+            listener = new StreamListener("AccountAggregate", conn, namer, ser);
+            _readModel = new BalanceReadModel(() => listener);
         }
         public void Run()
         {
@@ -54,17 +64,55 @@ namespace ReactiveDomain.AccountBalance
                 cmd = Console.ReadLine().Split(' ');
                 switch (cmd[0].ToLower())
                 {
-                    case "new":
+                    case "conn":
+                        _accountId = Guid.Parse(cmd[1]);
 
-                        repo.Save(new AccountAggregate(_accountId, _holderName));
+                        acct = repo.GetById<AccountAggregate>(_accountId);
+                        _holderName = acct.HolderName;
+                        _readModel.redraw(acct);
+                        break;
+                    case "list":
+                        foreach (var account in _readModel.Accounts)
+                        {
+                            Console.WriteLine(account.Id + "\t" + account.HolderName);
+                        }
+                        break;
+                    case "new":
+                        _accountId = Guid.NewGuid();
+
+                        if (cmd.Length > 1)
+                            _holderName = cmd[1];
+
+                        var createCommand = new CreateAccountCommand()
+                        {
+                            AccountId = _accountId,
+                            HolderName = _holderName
+                        };
+                        cmdHandler.Handle(createCommand);
 
                         break;
                     case "deposit":
                         acct = repo.GetById<AccountAggregate>(_accountId);
                         try
                         {
-                            acct.Credit(decimal.Parse(cmd[2]), cmd[1]);
-                            repo.Save(acct);
+                            if (cmd[1].ToLower() == "cash")
+                            {
+                                var depositCashCommand = new DepositCashCommand()
+                                {
+                                    AccountId = acct.Id,
+                                    Amount = decimal.Parse(cmd[2])
+                                };
+                                cmdHandler.Handle(depositCashCommand);
+                            }
+                            else if (cmd[1].ToLower() == "check")
+                            {
+                                var depositCheckCommand = new DepositCheckCommand()
+                                {
+                                    AccountId = acct.Id,
+                                    Amount = decimal.Parse(cmd[2])
+                                };
+                                cmdHandler.Handle(depositCheckCommand);
+                            }
                             Console.WriteLine($"Deposit {cmd[2]}");
                         }
                         catch (Exception e)
@@ -75,10 +123,13 @@ namespace ReactiveDomain.AccountBalance
                     case "withdraw":
                         try
                         {
-
                             acct = repo.GetById<AccountAggregate>(_accountId);
-                            acct.Debit(decimal.Parse(cmd[1]));
-                            repo.Save(acct);
+                            var withdrawCommand = new WithdrawCashCommand
+                            {
+                                AccountId = acct.Id,
+                                Amount = decimal.Parse(cmd[1])
+                            };
+                            cmdHandler.Handle(withdrawCommand);
                             Console.WriteLine($"Withdraw {cmd[1]}");
                         }
                         catch (Exception e)
@@ -90,9 +141,13 @@ namespace ReactiveDomain.AccountBalance
                         acct = repo.GetById<AccountAggregate>(_accountId);
                         try
                         {
-                            acct.SetOverDraftLimit(decimal.Parse(cmd[1]));
+                            var setOverDraftLimit = new SetOverDraftLimitCommand()
+                            {
+                                AccountId = acct.Id,
+                                OverDraftLimit = decimal.Parse(cmd[1])
+                            };
+                            cmdHandler.Handle(setOverDraftLimit);
                             Console.WriteLine($"setting overdraftLimit to {cmd[1]}");
-                            repo.Save(acct);
                         }
                         catch (Exception e)
                         {
@@ -103,9 +158,13 @@ namespace ReactiveDomain.AccountBalance
                         acct = repo.GetById<AccountAggregate>(_accountId);
                         try
                         {
-                            acct.SetDailyWireTransferLimit(decimal.Parse(cmd[1]));
+                            var setDailyWireTransferLimit = new SetDailyWireTransferLimitCommand()
+                            {
+                                AccountId = acct.Id,
+                                DailyWireTransferLimit = decimal.Parse(cmd[1])
+                            };
+                            cmdHandler.Handle(setDailyWireTransferLimit);
                             Console.WriteLine($"setting dailyWireTransferLimit to {cmd[1]}");
-                            repo.Save(acct);
                         }
                         catch (Exception e)
                         {

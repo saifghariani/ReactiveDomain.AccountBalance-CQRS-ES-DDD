@@ -1,16 +1,18 @@
 ﻿using System;
+using Newtonsoft.Json;
 using ReactiveDomain.Messaging;
 
 namespace ReactiveDomain.AccountBalance.Events
 {
-    public class AccountCashDepositedEvent : Message
+    public class AccountCashDepositedEvent : Event
     {
         public Guid AccountId { get; set; }
         public decimal Amount { get; set; }
-        public AccountCashDepositedEvent(Guid accountId, decimal amount)
-        {
-            AccountId = accountId;
-            Amount = amount;
-        }
+        public AccountCashDepositedEvent(CorrelatedMessage source) : base(source)
+        { }
+        [JsonConstructor]
+        public AccountCashDepositedEvent(CorrelationId correlationId, SourceId sourceId)
+            : base(correlationId, sourceId)
+        { }
     }
 }

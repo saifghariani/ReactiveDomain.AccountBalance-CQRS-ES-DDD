@@ -1,19 +1,20 @@
 ﻿using ReactiveDomain.Messaging;
 using System;
+using Newtonsoft.Json;
 
 namespace ReactiveDomain.AccountBalance.Events
 {
-    public class AccountCreatedEvent : Message
+    public class AccountCreatedEvent : Event
     {
-        public readonly Guid Id;
+        public Guid Id { get; set; }
         public string HolderName { get; set; }
         public string State { get; set; }
 
-        public AccountCreatedEvent(Guid id, string holderName)
-        {
-            Id = id;
-            HolderName = holderName;
-            State = "Active";
-        }
+        public AccountCreatedEvent(CorrelatedMessage source) : base(source)
+        { }
+        [JsonConstructor]
+        public AccountCreatedEvent(CorrelationId correlationId, SourceId sourceId)
+            : base(correlationId, sourceId)
+        { }
     }
 }
