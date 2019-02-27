@@ -9,7 +9,7 @@ namespace reactivedomain.accountbalance.ui.server
     public interface IAccountService
     {
         IList<Account> GetAll();
-        Guid Add(Account account);
+        CommandResponse Add(Account account);
         Account GetById(Guid accountId);
         CommandResponse DepositCash(Guid accountId, decimal amount);
         CommandResponse DepositCheck(Guid accountId, decimal amount);

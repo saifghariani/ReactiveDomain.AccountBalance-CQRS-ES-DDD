@@ -27,6 +27,8 @@ namespace ReactiveDomain.AccountBalance
             {
                 if (_repository.TryGetById<AccountAggregate>(command.AccountId, out var _))
                     throw new ValidationException("An account with this ID already exists");
+                if(string.IsNullOrWhiteSpace(command.HolderName))
+                    throw new ValidationException("HolderName can't be empty");
 
                 var account = new AccountAggregate(command.AccountId, command.HolderName, command);
                 _repository.Save(account);
@@ -117,9 +119,10 @@ namespace ReactiveDomain.AccountBalance
                 if (!_repository.TryGetById<AccountAggregate>(command.AccountId, out var account))
                     throw new ValidationException("No account with this ID exists");
 
-                account.Debit(command.Amount, command);
-
+                var msg =account.Debit(command.Amount, command);
                 _repository.Save(account);
+                if (!string.IsNullOrEmpty(msg))
+                    throw new ValidationException(msg);
                 return command.Succeed();
             }
             catch (Exception e)

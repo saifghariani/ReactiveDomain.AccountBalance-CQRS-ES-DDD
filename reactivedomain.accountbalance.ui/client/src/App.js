@@ -84,9 +84,10 @@ class App extends React.Component {
           <AccountDetails account={this.state.CurrentAccount} />
           <button onClick={this.changeAccount} className='sign-button'>Change Account</button>
           </div>
-          <Actions msg={this.state.Message} onCheckDeposit={this.depositCheck} onCashDeposit={this.depositCash} 
+          <Actions onCheckDeposit={this.depositCheck} onCashDeposit={this.depositCash} 
           onWithdraw={this.withdraw} onSetDailyWireTransferLimit={this.setDailyWireTransferLimit}
           onSetOverDraftLimit={this.setOverDraftLimit}/>
+          <p style={{marginTop:'2px', marginBottom:'2px'}}>{this.state.Message}</p>
         </div> : <div ><div className='panel'>
           <SelectAccount onSubmit={this.selectAccount} onAdd={this.addAccount} message={this.state.Message}/>
           

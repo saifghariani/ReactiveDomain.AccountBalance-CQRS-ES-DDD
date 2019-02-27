@@ -90,6 +90,9 @@ namespace ReactiveDomain.AccountBalance
         }
         public void Credit(decimal amount, string type, CorrelatedMessage source)
         {
+            if (amount <= 0)
+                throw new ValidationException("Cannot deposit a negative amount");
+
             if (type.ToLower().Contains("cash"))
             {
                 var cashDeposited = new AccountCashDepositedEvent(source)
@@ -129,10 +132,11 @@ namespace ReactiveDomain.AccountBalance
             }
         }
 
-        public void Debit(decimal amount, CorrelatedMessage source)
+        public string Debit(decimal amount, CorrelatedMessage source)
         {
-            if (amount < 0)
-                throw new ValidationException("Cash Withdrawal cannot be a negative amount");
+            var msg = string.Empty;
+            if (amount <= 0)
+                throw new ValidationException("Cannot withdraw a negative amount");
 
             if (State.ToLower() == "blocked")
                 throw new ValidationException("Account is blocked");
@@ -145,6 +149,7 @@ namespace ReactiveDomain.AccountBalance
                     AccountState = "Blocked"
                 };
                 Raise(blocked);
+                msg = $"Account is blocked, you only have {DailyWireTransferLimit - _withdrawnToday} left to withdraw today";
             }
 
             if (State.ToLower() == "active")
@@ -157,6 +162,7 @@ namespace ReactiveDomain.AccountBalance
                         AccountState = "Blocked"
                     };
                     Raise(blocked);
+                    msg = $"Account is blocked, you exceeded your overdraft limit";
                 }
                 else
                 {
@@ -170,18 +176,30 @@ namespace ReactiveDomain.AccountBalance
                 }
             }
 
+            return msg;
+
         }
 
         public void SetDailyWireTransferLimit(decimal dailyWireTransferLimit, CorrelatedMessage source)
         {
             if (dailyWireTransferLimit < 0)
                 throw new ValidationException("dailyWireTransfer limit cannot be negative");
+            if (State.ToLower() == "blocked" && _withdrawnToday <= DailyWireTransferLimit && dailyWireTransferLimit > DailyWireTransferLimit)
+            {
+                var unblocked = new AccountUnblockedEvent(source)
+                {
+                    AccountId = Id,
+                    AccountState = "Active"
+                };
+                Raise(unblocked);
+            }
             var dailyWireTransferLimitSet = new DailyWireTransferLimitSetEvent(source)
             {
                 AccountId = Id,
                 DailyWireTransferLimit = dailyWireTransferLimit
             };
             Raise(dailyWireTransferLimitSet);
+
         }
 
         public void SetOverDraftLimit(decimal overDraftLimit, CorrelatedMessage source)

@@ -31,16 +31,15 @@ namespace reactivedomain.accountbalance.ui.server
             _readModel = new BalanceReadModel(() => listener);
         }
 
-        public Guid Add(Account account)
+       
+        public CommandResponse Add(Account account)
         {
-            var accountId = Guid.NewGuid();
             var createAccountCommand = new CreateAccountCommand
             {
-                AccountId = accountId,
-                HolderName = account.HolderName,
+                AccountId = Guid.Parse(account.Id),
+                HolderName = account.HolderName
             };
-            _cmdHandler.Handle(createAccountCommand);
-            return accountId;
+            return _cmdHandler.Handle(createAccountCommand);
         }
 
         public CommandResponse DepositCash(Guid accountId, decimal amount)

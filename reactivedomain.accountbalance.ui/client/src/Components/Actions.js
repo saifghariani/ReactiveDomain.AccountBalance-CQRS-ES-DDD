@@ -51,7 +51,7 @@ class Actions extends React.Component{
                         </div>
                         <label for="damount">Amount</label>
                         <input type="number" name="damount" onChange={(event)=>this.setState({damount: event.target.value})} value={this.state.damount}/><label>$</label>
-                        <div className="outcome">{this.props.msg}</div>
+                        
                         <button class="pay-button" onClick={this.handleDeposit}>Deposit</button>
                         <div class="arrows">
                         <label class="back" onClick={()=>this.setState({ action : "daily"})} for="tab-4">&#8249;</label>

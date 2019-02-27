@@ -13,6 +13,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
         public Accounts(IAccountService accountService)
         {
             _accountService = accountService;
+            var waiting = 5;
             _timer = new Timer(state =>
             {
                 if (CurrentAccount != null)
@@ -20,9 +21,17 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                     CurrentAccount = _accountService.GetById(Guid.Parse(CurrentAccount.Id));
                     Changed(nameof(CurrentAccount));
                 }
+
+                if (waiting == 0)
+                {
+                    waiting = 5;
+                    Message = string.Empty;
+                    Changed(nameof(Message));
+                }
                 AccountsList = _accountService.GetAll();
                 Changed(nameof(AccountsList));
                 PushUpdates();
+                waiting--;
 
             }, null, 0, 1000);
         }
@@ -38,7 +47,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                 HolderName = holderName,
                 State = "Active"
             };
-
+            
             this.AddList(nameof(AccountsList), new Account()
             {
                 Id = _accountService.Add(newRecord).ToString(),
@@ -48,34 +57,49 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
         };
         public Action<string> SetOverDraftLimit => (overDraftLimit) =>
         {
-            var msg = _accountService.SetOverDraftLimit(Guid.Parse(CurrentAccount.Id), decimal.Parse(overDraftLimit));
+            dynamic msg = _accountService.SetOverDraftLimit(Guid.Parse(CurrentAccount.Id), decimal.Parse(overDraftLimit));
+            if (msg.ToString().ToLower().Contains("success"))
+                Message = "Overdraft Limit Set";
+            else
+                Message = msg.Exception.Message;
+            Changed(nameof(Message));
         };
         public Action<string> SetDailyWireTransferLimit => (dailyWireTransferLimit) =>
         {
-            var msg = _accountService.SetDailyWireTransferLimit(Guid.Parse(CurrentAccount.Id), decimal.Parse(dailyWireTransferLimit));
+            dynamic msg = _accountService.SetDailyWireTransferLimit(Guid.Parse(CurrentAccount.Id), decimal.Parse(dailyWireTransferLimit));
+            if (msg.ToString().ToLower().Contains("success"))
+                Message = "Daily Wire Transfer Limit Set";
+            else
+                Message = msg.Exception.Message;
+            Changed(nameof(Message));
         };
 
         public Action<string> Withdraw => (amount) =>
         {
-            var msg = _accountService.Withdraw(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
+            dynamic msg = _accountService.Withdraw(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
+            if (msg.ToString().ToLower().Contains("success"))
+                Message = "Cash Withdrawn";
+            else
+                Message = msg.Exception.Message;
+            Changed(nameof(Message));
         };
         public Action<string> DepositCash => (amount) =>
         {
-            var msg = _accountService.DepositCash(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
+            dynamic msg = _accountService.DepositCash(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
             if (msg.ToString().ToLower().Contains("success"))
                 Message = "Cash deposited";
             else
-                Message = "Could not deposit cash";
+                Message = msg.Exception.Message;
             Changed(nameof(Message));
         };
         public Action<string> DepositCheck => (amount) =>
         {
 
-            var msg = _accountService.DepositCheck(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
+            dynamic msg = _accountService.DepositCheck(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
             if (msg.ToString().ToLower().Contains("success"))
                 Message = "Check deposited, the funds will be available on the next business day.";
             else
-                Message = "Could not deposit check";
+                Message = msg.Exception.Message;
             Changed(nameof(Message));
         };
 
