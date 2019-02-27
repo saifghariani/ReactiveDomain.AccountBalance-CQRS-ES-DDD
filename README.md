@@ -8,4 +8,4 @@ To start the project:
 ```
 EventStore.ClusterNode.exe --db ./db --log ./logs --start-standard-projections=True --run-projections=System
 ```
-3. Set ReactiveDomain.AccountBalance as StartUp Project, build & run the project
+3. Set reactivedomain.accountbalance.ui as StartUp Project, build & run the project
