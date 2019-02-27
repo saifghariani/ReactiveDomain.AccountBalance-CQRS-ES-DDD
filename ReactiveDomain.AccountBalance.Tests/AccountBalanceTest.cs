@@ -25,7 +25,7 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.Credit(amount, "cash");
+            //acct.Credit(amount, "cash");
             Assert.Equal(ExpectedResult, acct.Balance);
         }
 
@@ -38,7 +38,7 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.Credit(amount, "check");
+           // acct.Credit(amount, "check");
             Assert.Equal(ExpectedResult, acct.Balance);
         }
 
@@ -52,9 +52,9 @@ namespace ReactiveDomain.AccountBalance.Tests
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
             //to avoid daily Limit
-            acct.SetDailyWireTransferLimit(1000);
-            acct.Credit(1200, "cash");
-            acct.Debit(amount);
+            //acct.SetDailyWireTransferLimit(1000);
+            //acct.Credit(1200, "cash");
+           // acct.Debit(amount);
             Assert.Equal(ExpectedResult, acct.Balance);
         }
 
@@ -67,7 +67,7 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.SetOverDraftLimit(limit);
+           // acct.SetOverDraftLimit(limit);
             Assert.Equal(ExpectedResult, acct.OverDraftLimit);
         }
 
@@ -80,7 +80,7 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.SetDailyWireTransferLimit(limit);
+            //acct.SetDailyWireTransferLimit(limit);
             Assert.Equal(ExpectedResult, acct.DailyWireTransferLimit);
         }
 
@@ -93,10 +93,10 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.SetDailyWireTransferLimit(limit);
-            acct.Credit(501, "cash");
-            acct.Debit(250);
-            acct.Debit(251);
+            //acct.SetDailyWireTransferLimit(limit);
+            //acct.Credit(501, "cash");
+            //acct.Debit(250);
+           // acct.Debit(251);
             Assert.Equal(ExpectedResult, acct.State);
             
         }
@@ -111,10 +111,10 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.SetOverDraftLimit(limit);
+            //acct.SetOverDraftLimit(limit);
             //to avoid daily limit exception
-            acct.SetDailyWireTransferLimit(1000); 
-            acct.Debit(amount);
+            //acct.SetDailyWireTransferLimit(1000); 
+            //acct.Debit(amount);
             Assert.Equal(state, acct.State);
         }
 
@@ -127,14 +127,14 @@ namespace ReactiveDomain.AccountBalance.Tests
             app.Bootstrap();
             AccountAggregate acct;
             acct = app.repo.GetById<AccountAggregate>(app._accountId);
-            acct.SetOverDraftLimit(limit);
+            //acct.SetOverDraftLimit(limit);
             //to avoid daily limit exception
-            acct.SetDailyWireTransferLimit(1000);
+            //acct.SetDailyWireTransferLimit(1000);
             //to block account
-            acct.Debit(501);
+            //acct.Debit(501);
             Assert.Equal("Blocked", acct.State);
 
-            acct.Credit(501, "cash");
+            //acct.Credit(501, "cash");
             Assert.Equal("Active", acct.State);
 
         }

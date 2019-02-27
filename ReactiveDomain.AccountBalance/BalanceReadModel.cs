@@ -3,6 +3,7 @@ using ReactiveDomain.Foundation;
 using ReactiveDomain.Messaging.Bus;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ReactiveDomain.AccountBalance
 {
@@ -17,7 +18,7 @@ namespace ReactiveDomain.AccountBalance
         IHandle<OverDraftLimitSetEvent>,
         IHandle<DailyWireTransferLimitSetEvent>
     {
-        public List<AccountAggregate> Accounts = new List<AccountAggregate>();
+        public List<Account> Accounts = new List<Account>();
 
         public BalanceReadModel(Func<IListener> listener) : base(listener)
         {
@@ -41,24 +42,30 @@ namespace ReactiveDomain.AccountBalance
         {
             state = message.State;
             holderName = message.HolderName;
-            Accounts.Add(new AccountAggregate(message.Id, holderName, message));
-            //redraw();
+            Accounts.Add(new Account
+            {
+                Id = message.Id,
+                HolderName = message.HolderName,
+                State = message.State
+            });
         }
         public void Handle(AccountBlockedEvent message)
         {
             state = message.AccountState;
+            Accounts.First(acct => acct.Id == message.AccountId).State=state;
             redraw();
-
         }
         public void Handle(AccountUnblockedEvent message)
         {
             state = message.AccountState;
+            Accounts.First(acct => acct.Id == message.AccountId).State = state;
             redraw();
 
         }
         public void Handle(AccountCashDepositedEvent message)
         {
             balance += (decimal)message.Amount;
+            Accounts.First(acct => acct.Id == message.AccountId).Balance = balance;
             redraw();
 
         }
@@ -72,22 +79,26 @@ namespace ReactiveDomain.AccountBalance
             if (DateTime.UtcNow.Date >= depositDate.Date)
                 balance += (decimal)message.Amount;
 
+            Accounts.First(acct => acct.Id == message.AccountId).Balance = balance;
             redraw();
         }
         public void Handle(AccountCashWithdrawnEvent message)
         {
             balance -= (decimal)message.Amount;
+            Accounts.First(acct => acct.Id == message.AccountId).Balance = balance;
             redraw();
         }
         public void Handle(OverDraftLimitSetEvent message)
         {
             overDraftLimit = (decimal)message.OverDraftLimit;
+            Accounts.First(acct => acct.Id == message.AccountId).OverDraftLimit = overDraftLimit;
             redraw();
 
         }
         public void Handle(DailyWireTransferLimitSetEvent message)
         {
             dailyWireTransferLimit = (decimal)message.DailyWireTransferLimit;
+            Accounts.First(acct => acct.Id == message.AccountId).DailyWireTransferLimit = dailyWireTransferLimit;
             redraw();
 
         }
@@ -104,16 +115,16 @@ namespace ReactiveDomain.AccountBalance
         }
         public void redraw(AccountAggregate account = null)
         {
-            Console.Clear();
+            ///Console.Clear();
 
             if (account != null)
                 GetAccount(account);
 
-            Console.WriteLine($"Holder's name = { holderName }");
-            Console.WriteLine($"OverDraftLimit = { overDraftLimit }");
-            Console.WriteLine($"DailyWireTransferLimit = { dailyWireTransferLimit }");
-            Console.WriteLine($"Balance = { balance }");
-            Console.WriteLine($"State = { state }");
+            //Console.WriteLine($"Holder's name = { holderName }");
+            //Console.WriteLine($"OverDraftLimit = { overDraftLimit }");
+            //Console.WriteLine($"DailyWireTransferLimit = { dailyWireTransferLimit }");
+            //Console.WriteLine($"Balance = { balance }");
+            //Console.WriteLine($"State = { state }");
         }
 
 

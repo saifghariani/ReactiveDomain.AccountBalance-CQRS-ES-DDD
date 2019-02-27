@@ -1,25 +1,97 @@
-import React, { Component } from 'react';
-import logo from './logo.svg';
+import React from 'react';
+import Actions from './Components/Actions'
 import './App.css';
+import SelectAccount from './Components/SelectAccount';
+import AccountList from './Components/AccountList';
+import dotnetify from 'dotnetify';
+import AccountDetails from './Components/AccountDetails';
 
-class App extends Component {
+class App extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+          Id : '',
+          holderName:'',
+          Message : '',
+          CurrentAccount: '',
+          AccountsList : []
+        }
+        this.vm = dotnetify.react.connect('Accounts', this);
+        this.dispatch = state => this.vm.$dispatch(state);
+        this.dispatchState = state => {
+            this.setState(state);
+            this.vm.$dispatch(state);
+        };
+    };
+    componentWillUnmount() {
+        this.vm.$destroy();
+    };
+
+    selectAccount=(selectedAccountInfo) =>{
+      this.dispatch({
+        Select: {
+          Id : selectedAccountInfo.accountId,
+          HolderName : selectedAccountInfo.holderName
+        }
+      });
+    };
+    changeAccount= ()=>{
+      this.dispatch({
+        Select: {
+          State: 'disconnect'
+        }
+      });
+    };
+    addAccount=(Infos)=>{
+      this.dispatch({
+        Add: Infos.holderName
+      });
+    };
+    depositCheck=(Infos)=>{
+      this.dispatch({
+        DepositCheck : Infos.damount
+      });
+    };
+    depositCash=(Infos)=>{
+      this.dispatch({
+        DepositCash : Infos.damount
+      });
+    };
+    withdraw=(Infos)=>{
+      this.dispatch({
+        Withdraw : Infos.wamount
+      })
+    }
+    setDailyWireTransferLimit=(Infos)=>{
+      this.dispatch({
+        SetDailyWireTransferLimit : Infos.dlimit
+      })
+    }
+    setOverDraftLimit=(Infos)=>{
+      this.dispatch({
+        SetOverDraftLimit : Infos.olimit
+      })
+    }
   render() {
+    console.log(this.state.AccountsList)
+    
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </header>
+      
+      <div style={{padding : '20px'}}>
+        {this.state.CurrentAccount ? 
+        <div>
+          <div className='panel'>
+          <AccountDetails account={this.state.CurrentAccount} />
+          <button onClick={this.changeAccount} className='sign-button'>Change Account</button>
+          </div>
+          <Actions msg={this.state.Message} onCheckDeposit={this.depositCheck} onCashDeposit={this.depositCash} 
+          onWithdraw={this.withdraw} onSetDailyWireTransferLimit={this.setDailyWireTransferLimit}
+          onSetOverDraftLimit={this.setOverDraftLimit}/>
+        </div> : <div>
+          <SelectAccount onSubmit={this.selectAccount} onAdd={this.addAccount} />
+          <div> <p style={{ color: 'red' }}>{this.state.Message}</p></div>
+         <AccountList accounts={this.state.AccountsList}/></div>}
+
       </div>
     );
   }

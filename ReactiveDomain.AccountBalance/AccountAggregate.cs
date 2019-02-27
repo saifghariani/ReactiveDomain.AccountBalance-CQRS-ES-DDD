@@ -196,5 +196,18 @@ namespace ReactiveDomain.AccountBalance
             };
             Raise(overDraftLimitSetEvent);
         }
+
+        public Account ToAccount()
+        {
+            return new Account()
+            {
+                Id = Id,
+                HolderName = HolderName,
+                Balance = Balance,
+                State = State,
+                DailyWireTransferLimit = DailyWireTransferLimit,
+                OverDraftLimit = OverDraftLimit
+            };
+        }
     }
 }

@@ -29,7 +29,6 @@ namespace ReactiveDomain.AccountBalance
                     throw new ValidationException("An account with this ID already exists");
 
                 var account = new AccountAggregate(command.AccountId, command.HolderName, command);
-
                 _repository.Save(account);
                 return command.Succeed();
             }
