@@ -16,9 +16,9 @@ class Actions extends React.Component{
         event.preventDefault();
         if(this.state.damount)
         {
-            if(this.state.depositType=="cash"){
+            if(this.state.depositType==="cash"){
             this.props.onCashDeposit(this.state);
-        }else if(this.state.depositType=="check"){
+        }else if(this.state.depositType==="check"){
             this.props.onCheckDeposit(this.state);
         }
     }

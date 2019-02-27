@@ -21,7 +21,7 @@ class SelectAccount extends React.Component{
     }
     render(){
         return (
-            <div className='panel'>
+            <div>
             <table style={{textAlign : 'right'}}>
                 <tr>
                     <td><label for="accountId">AccountId</label></td>
@@ -30,6 +30,10 @@ class SelectAccount extends React.Component{
                 <tr>
                     <td><label for="holderName">HolderName</label></td>
                     <td><input name="holderName" type="text"  onChange={(event) => this.setState({ holderName: event.target.value })}/></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td><div class="outcome">{this.props.message}</div></td>
                 </tr>
                 <tr>
                     <td></td>

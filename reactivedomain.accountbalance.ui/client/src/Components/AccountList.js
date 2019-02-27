@@ -10,7 +10,7 @@ class AccountList extends React.Component{
         <table border="2px" style={{border: '2px solid black'}}>
         
             <tbody><tr><th>AccountId</th><th>HolderName</th><th>S</th></tr>
-            {this.props.accounts.map((account)=> <Account {...account}/>)}
+            {this.props.accounts? this.props.accounts.map((account)=> <Account {...account}/>): null}
             </tbody>
         </table>
         </div>

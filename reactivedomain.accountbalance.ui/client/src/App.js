@@ -73,7 +73,7 @@ class App extends React.Component {
       })
     }
   render() {
-    console.log(this.state.AccountsList)
+    //console.log(this.state.AccountsList)
     
     return (
       
@@ -87,9 +87,10 @@ class App extends React.Component {
           <Actions msg={this.state.Message} onCheckDeposit={this.depositCheck} onCashDeposit={this.depositCash} 
           onWithdraw={this.withdraw} onSetDailyWireTransferLimit={this.setDailyWireTransferLimit}
           onSetOverDraftLimit={this.setOverDraftLimit}/>
-        </div> : <div>
-          <SelectAccount onSubmit={this.selectAccount} onAdd={this.addAccount} />
-          <div> <p style={{ color: 'red' }}>{this.state.Message}</p></div>
+        </div> : <div ><div className='panel'>
+          <SelectAccount onSubmit={this.selectAccount} onAdd={this.addAccount} message={this.state.Message}/>
+          
+          </div>
          <AccountList accounts={this.state.AccountsList}/></div>}
 
       </div>

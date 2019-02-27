@@ -6,7 +6,7 @@ namespace ReactiveDomain.AccountBalance
 {
     public class Account
     {
-        public Guid Id { get; set; }
+        public string Id { get; set; }
         public string HolderName { get; set; }
         public string State { get; set; }
         public decimal Balance { get; set; }

@@ -101,7 +101,15 @@ namespace reactivedomain.accountbalance.ui.server
 
         public Account GetById(Guid accountId)
         {
-            var account = _repo.GetById<AccountAggregate>(accountId);
+            AccountAggregate account = new AccountAggregate();
+            try
+            {
+                account = _repo.GetById<AccountAggregate>(accountId);
+
+            }
+            catch (Exception)
+            {}
+
             return account.ToAccount();
         }
     }

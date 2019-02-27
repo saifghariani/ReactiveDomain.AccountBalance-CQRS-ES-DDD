@@ -44,7 +44,7 @@ namespace ReactiveDomain.AccountBalance
             holderName = message.HolderName;
             Accounts.Add(new Account
             {
-                Id = message.Id,
+                Id = message.Id.ToString(),
                 HolderName = message.HolderName,
                 State = message.State
             });
@@ -52,20 +52,20 @@ namespace ReactiveDomain.AccountBalance
         public void Handle(AccountBlockedEvent message)
         {
             state = message.AccountState;
-            Accounts.First(acct => acct.Id == message.AccountId).State=state;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).State=state;
             redraw();
         }
         public void Handle(AccountUnblockedEvent message)
         {
             state = message.AccountState;
-            Accounts.First(acct => acct.Id == message.AccountId).State = state;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).State = state;
             redraw();
 
         }
         public void Handle(AccountCashDepositedEvent message)
         {
             balance += (decimal)message.Amount;
-            Accounts.First(acct => acct.Id == message.AccountId).Balance = balance;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).Balance = balance;
             redraw();
 
         }
@@ -79,26 +79,26 @@ namespace ReactiveDomain.AccountBalance
             if (DateTime.UtcNow.Date >= depositDate.Date)
                 balance += (decimal)message.Amount;
 
-            Accounts.First(acct => acct.Id == message.AccountId).Balance = balance;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).Balance = balance;
             redraw();
         }
         public void Handle(AccountCashWithdrawnEvent message)
         {
             balance -= (decimal)message.Amount;
-            Accounts.First(acct => acct.Id == message.AccountId).Balance = balance;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).Balance = balance;
             redraw();
         }
         public void Handle(OverDraftLimitSetEvent message)
         {
             overDraftLimit = (decimal)message.OverDraftLimit;
-            Accounts.First(acct => acct.Id == message.AccountId).OverDraftLimit = overDraftLimit;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).OverDraftLimit = overDraftLimit;
             redraw();
 
         }
         public void Handle(DailyWireTransferLimitSetEvent message)
         {
             dailyWireTransferLimit = (decimal)message.DailyWireTransferLimit;
-            Accounts.First(acct => acct.Id == message.AccountId).DailyWireTransferLimit = dailyWireTransferLimit;
+            Accounts.First(acct => acct.Id == message.AccountId.ToString()).DailyWireTransferLimit = dailyWireTransferLimit;
             redraw();
 
         }

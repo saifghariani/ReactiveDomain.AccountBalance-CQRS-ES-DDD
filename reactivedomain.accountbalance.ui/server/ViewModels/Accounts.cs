@@ -17,7 +17,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
             {
                 if (CurrentAccount != null)
                 {
-                    CurrentAccount = _accountService.GetById(CurrentAccount.Id);
+                    CurrentAccount = _accountService.GetById(Guid.Parse(CurrentAccount.Id));
                     Changed(nameof(CurrentAccount));
                 }
                 AccountsList = _accountService.GetAll();
@@ -41,64 +41,42 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
 
             this.AddList(nameof(AccountsList), new Account()
             {
-                Id = _accountService.Add(newRecord),
+                Id = _accountService.Add(newRecord).ToString(),
                 HolderName = newRecord.HolderName,
                 State = newRecord.State,
             });
         };
         public Action<string> SetOverDraftLimit => (overDraftLimit) =>
         {
-            var msg = _accountService.SetOverDraftLimit(CurrentAccount.Id, decimal.Parse(overDraftLimit));
-            if (msg.ToString().ToLower().Contains("success"))
-                Message = "OverdraftLimit set";
-            else
-                Message = "Could not set OverdraftLimit";
-            Changed(nameof(Message));
-            //CurrentAccount = _accountService.GetById(CurrentAccount.Id);
-            //Changed(nameof(CurrentAccount));
+            var msg = _accountService.SetOverDraftLimit(Guid.Parse(CurrentAccount.Id), decimal.Parse(overDraftLimit));
         };
         public Action<string> SetDailyWireTransferLimit => (dailyWireTransferLimit) =>
         {
-            var msg = _accountService.SetDailyWireTransferLimit(CurrentAccount.Id, decimal.Parse(dailyWireTransferLimit));
-            if (msg.ToString().ToLower().Contains("success"))
-                Message = "DailyWireTransferLimit set";
-            else
-                Message = "Could not set DailyWireTransferLimit";
-            Changed(nameof(Message));
-            //CurrentAccount = _accountService.GetById(CurrentAccount.Id);
-            //Changed(nameof(CurrentAccount));
+            var msg = _accountService.SetDailyWireTransferLimit(Guid.Parse(CurrentAccount.Id), decimal.Parse(dailyWireTransferLimit));
         };
 
         public Action<string> Withdraw => (amount) =>
         {
-            var msg = _accountService.Withdraw(CurrentAccount.Id, decimal.Parse(amount));
-
-            //CurrentAccount = _accountService.GetById(CurrentAccount.Id);
-            //Changed(nameof(CurrentAccount));
+            var msg = _accountService.Withdraw(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
         };
         public Action<string> DepositCash => (amount) =>
         {
-            var msg = _accountService.DepositCash(CurrentAccount.Id, decimal.Parse(amount));
+            var msg = _accountService.DepositCash(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
             if (msg.ToString().ToLower().Contains("success"))
                 Message = "Cash deposited";
             else
                 Message = "Could not deposit cash";
-
             Changed(nameof(Message));
-            //CurrentAccount = _accountService.GetById(CurrentAccount.Id);
-            //Changed(nameof(CurrentAccount));
         };
         public Action<string> DepositCheck => (amount) =>
         {
 
-            var msg = _accountService.DepositCheck(CurrentAccount.Id, decimal.Parse(amount));
+            var msg = _accountService.DepositCheck(Guid.Parse(CurrentAccount.Id), decimal.Parse(amount));
             if (msg.ToString().ToLower().Contains("success"))
                 Message = "Check deposited, the funds will be available on the next business day.";
             else
                 Message = "Could not deposit check";
             Changed(nameof(Message));
-            //CurrentAccount = _accountService.GetById(CurrentAccount.Id);
-            //Changed(nameof(CurrentAccount));
         };
 
         public Action<Account> Select => (account) =>
@@ -112,8 +90,9 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
             }
             else
             {
-                var tempaccount = _accountService.GetById(account.Id);
-                if (tempaccount != null)
+                Guid.TryParse(account.Id, out Guid accountId);
+                var tempaccount = _accountService.GetById(accountId);
+                if (tempaccount.Id != Guid.Empty.ToString())
                 {
                     if (tempaccount.HolderName == account.HolderName)
                     {

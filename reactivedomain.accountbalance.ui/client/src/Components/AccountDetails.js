@@ -8,7 +8,7 @@ const AccountDetails = (props)=>{
                 <tr>
                     <td></td>
                     <td>State</td>
-                    <td style={{color: props.account.State=="Active" ? 'green':'red'}}>{props.account.State}</td>
+                    <td style={{color: props.account.State==="Active" ? 'green':'red'}}>{props.account.State}</td>
                     <td></td>
                 </tr>
                 <tr>
