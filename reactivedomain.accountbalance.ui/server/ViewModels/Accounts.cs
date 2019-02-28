@@ -10,10 +10,10 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
     {
         private readonly IAccountService _accountService;
         private Timer _timer;
+        private int _messagedelay = 0;
         public Accounts(IAccountService accountService)
         {
             _accountService = accountService;
-            var waiting = 5;
             _timer = new Timer(state =>
             {
                 if (CurrentAccount != null)
@@ -22,16 +22,15 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                     Changed(nameof(CurrentAccount));
                 }
 
-                if (waiting == 0)
+                if (_messagedelay == 0)
                 {
-                    waiting = 5;
                     Message = string.Empty;
                     Changed(nameof(Message));
                 }
                 AccountsList = _accountService.GetAll();
                 Changed(nameof(AccountsList));
                 PushUpdates();
-                waiting--;
+                _messagedelay--;
 
             }, null, 0, 1000);
         }
@@ -44,16 +43,25 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
         {
             var newRecord = new Account()
             {
+                Id = Guid.NewGuid().ToString(),
                 HolderName = holderName,
                 State = "Active"
             };
-            
-            this.AddList(nameof(AccountsList), new Account()
+            dynamic msg = _accountService.Add(newRecord);
+            if (msg.ToString().ToLower().Contains("success"))
             {
-                Id = _accountService.Add(newRecord).ToString(),
-                HolderName = newRecord.HolderName,
-                State = newRecord.State,
-            });
+                this.AddList(nameof(AccountsList), new Account()
+                {
+                    Id = newRecord.Id,
+                    HolderName = newRecord.HolderName,
+                    State = newRecord.State,
+                });
+                Message = "Account created";
+            }
+            else
+                Message = msg.Exception.Message;
+            _messagedelay = 5;
+            Changed(nameof(Message));
         };
         public Action<string> SetOverDraftLimit => (overDraftLimit) =>
         {
@@ -62,6 +70,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                 Message = "Overdraft Limit Set";
             else
                 Message = msg.Exception.Message;
+            _messagedelay = 5;
             Changed(nameof(Message));
         };
         public Action<string> SetDailyWireTransferLimit => (dailyWireTransferLimit) =>
@@ -71,6 +80,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                 Message = "Daily Wire Transfer Limit Set";
             else
                 Message = msg.Exception.Message;
+            _messagedelay = 5;
             Changed(nameof(Message));
         };
 
@@ -81,6 +91,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                 Message = "Cash Withdrawn";
             else
                 Message = msg.Exception.Message;
+            _messagedelay = 5;
             Changed(nameof(Message));
         };
         public Action<string> DepositCash => (amount) =>
@@ -90,6 +101,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                 Message = "Cash deposited";
             else
                 Message = msg.Exception.Message;
+            _messagedelay = 5;
             Changed(nameof(Message));
         };
         public Action<string> DepositCheck => (amount) =>
@@ -100,6 +112,7 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                 Message = "Check deposited, the funds will be available on the next business day.";
             else
                 Message = msg.Exception.Message;
+            _messagedelay = 5;
             Changed(nameof(Message));
         };
 
@@ -128,12 +141,14 @@ namespace reactivedomain.accountbalance.ui.server.ViewModels
                     else
                     {
                         Message = "Invalid HolderName";
+                        _messagedelay = 5;
                         Changed(nameof(Message));
                     }
                 }
                 else
                 {
                     Message = "Invalid Account";
+                    _messagedelay = 5;
                     Changed(nameof(Message));
                 }
             }
